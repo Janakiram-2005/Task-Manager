@@ -5,6 +5,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    proxy: {
+      "/api": {
+        target: "https://task-manager-backend-961886344080.us-central1.run.app",
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
 });
 

@@ -43,8 +43,8 @@ const SectionPicker = () => {
           <button
             onClick={() => { changeSection(null); setOpen(false); }}
             className={`mb-1 w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition ${selectedSection === null
-                ? "bg-indigo-600 text-white"
-                : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              ? "bg-indigo-600 text-white"
+              : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               }`}
           >
             All Sections
@@ -55,8 +55,8 @@ const SectionPicker = () => {
                 key={r}
                 onClick={() => { changeSection(i + 1); setOpen(false); }}
                 className={`rounded-lg py-1.5 text-center text-xs font-bold transition ${selectedSection === i + 1
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-400 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-400 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
                   }`}
               >
                 {r}
@@ -82,11 +82,23 @@ const AppShell = ({ children, onOpenAdmin, metrics, pendingCount }) => {
           <div className="flex items-center gap-5">
             <Link
               to="/"
-              className="flex items-center gap-1.5 text-sm font-bold tracking-tight text-slate-900 dark:text-slate-50"
+              className="flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900 dark:text-slate-50"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-[10px] font-black text-white shadow">
-                TC
-              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="h-7 w-7" fill="none">
+                <rect width="32" height="32" rx="8" fill="url(#lg)" />
+                <rect x="7" y="10" width="18" height="15" rx="2" fill="white" fillOpacity="0.15" stroke="white" strokeWidth="1.5" />
+                <rect x="10" y="14" width="4" height="4" rx="1" fill="white" fillOpacity="0.9" />
+                <rect x="15" y="14" width="4" height="4" rx="1" fill="white" fillOpacity="0.6" />
+                <rect x="10" y="19" width="4" height="2" rx="1" fill="white" fillOpacity="0.6" />
+                <line x1="11" y1="8" x2="11" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="21" y1="8" x2="21" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                <defs>
+                  <linearGradient id="lg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#2563eb" />
+                    <stop offset="1" stopColor="#6366f1" />
+                  </linearGradient>
+                </defs>
+              </svg>
               Task Calendar
             </Link>
             <nav className="flex gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -150,13 +162,21 @@ const AppShell = ({ children, onOpenAdmin, metrics, pendingCount }) => {
         {children}
       </main>
 
-      <footer className="mt-8 border-t border-slate-200 px-4 py-4 text-center text-[10px] text-slate-400 dark:border-slate-800 dark:text-slate-500">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 sm:flex-row">
+      <footer className="mt-8 border-t border-slate-200 px-4 py-4 dark:border-slate-800">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[11px] text-slate-400 sm:flex-row dark:text-slate-500">
           <span>Secure Academic Task Calendar — Admin key required to modify tasks</span>
-          <span>
-            Visitors: <span className="font-semibold text-slate-600 dark:text-slate-300">{metrics?.visitors ?? 0}</span>
-            {" · "}
-            Downloads: <span className="font-semibold text-slate-600 dark:text-slate-300">{metrics?.downloads ?? 0}</span>
+          <span className="flex items-center gap-3">
+            <span>
+              Visitors: <span className="font-semibold text-slate-600 dark:text-slate-300">{metrics?.visitors ?? 0}</span>
+              {" · "}
+              Downloads: <span className="font-semibold text-slate-600 dark:text-slate-300">{metrics?.downloads ?? 0}</span>
+            </span>
+            <a
+              href="mailto:msjanakiram2005@gmail.com"
+              className="text-blue-500 hover:text-blue-600 hover:underline dark:text-blue-400"
+            >
+              Contact Admin
+            </a>
           </span>
         </div>
       </footer>
