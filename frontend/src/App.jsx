@@ -23,7 +23,7 @@ const AppShell = ({ children, onOpenAdmin, metrics }) => {
             >
               Task Calendar
             </Link>
-            <nav className="hidden gap-3 text-xs font-medium text-slate-600 dark:text-slate-300 sm:flex">
+            <nav className="flex gap-3 text-xs font-medium text-slate-600 dark:text-slate-300">
               <NavLink
                 to="/"
                 className={({ isActive }) =>
