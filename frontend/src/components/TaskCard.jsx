@@ -12,7 +12,7 @@ const STATUS_STYLES = {
   Pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
 };
 
-const TaskCard = ({ task, onComplete, onDelete }) => {
+const TaskCard = ({ task, onComplete, onDelete, onEdit }) => {
   const { isAdmin } = useAuth();
 
   const deadlineDate = task.deadline_datetime ? new Date(task.deadline_datetime) : null;
@@ -59,7 +59,15 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
           {task.status}
         </span>
         {isAdmin && (
-          <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+            {/* Edit */}
+            <button
+              onClick={() => onEdit && onEdit(task)}
+              className="rounded-lg border border-blue-300 bg-white px-2.5 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 dark:border-blue-700 dark:bg-slate-900 dark:text-blue-400"
+            >
+              Edit
+            </button>
+            {/* Mark done */}
             {task.status !== "Completed" && (
               <button
                 onClick={() => onComplete(task)}
@@ -68,6 +76,7 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
                 Done
               </button>
             )}
+            {/* Delete */}
             <button
               onClick={() => onDelete(task)}
               className="rounded-lg border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-700 dark:bg-slate-900 dark:text-red-400"

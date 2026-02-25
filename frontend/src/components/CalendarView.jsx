@@ -12,7 +12,7 @@ const CalendarView = ({ tasks, onDateClick, onEventDrop }) => {
     id: t._id,
     title: t.title,
     start: t.start_datetime || t.deadline_datetime,
-    end: t.end_datetime || undefined,
+    end: t.deadline_datetime || undefined,   // span from start → deadline
     allDay: false,
     extendedProps: t
   }));

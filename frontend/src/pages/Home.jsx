@@ -77,7 +77,15 @@ const Home = () => {
     .slice(0, 5);
 
   const tasksForSelectedDate = selectedDate
-    ? filteredTasks.filter((t) => t.deadline_datetime?.startsWith(selectedDate))
+    ? filteredTasks.filter((t) => {
+      const start = t.start_datetime ? t.start_datetime.slice(0, 10) : null;
+      const deadline = t.deadline_datetime ? t.deadline_datetime.slice(0, 10) : null;
+      // Show if selectedDate hits the deadline, the start, or falls within start–deadline range
+      if (deadline === selectedDate) return true;
+      if (start === selectedDate) return true;
+      if (start && deadline && selectedDate >= start && selectedDate <= deadline) return true;
+      return false;
+    })
     : [];
 
   // ── Download PDF (all users) ─────────────────────────────────────
