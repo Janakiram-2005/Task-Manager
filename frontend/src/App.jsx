@@ -1,73 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import AdminModal from "./components/AdminModal.jsx";
 import { useTheme } from "./context/ThemeContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
-import { useSection } from "./context/SectionContext.jsx";
 import api from "./services/api";
-
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-  "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX"];
-
-// ─── Section Picker ────────────────────────────────────────────────────────────
-const SectionPicker = () => {
-  const { selectedSection, changeSection } = useSection();
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
-        title="Select class section"
-      >
-        <span>§</span>
-        <span>{selectedSection ? ROMAN[selectedSection - 1] : "All"}</span>
-        <span className="text-indigo-400">▾</span>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-          <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Class Sections
-          </p>
-          <button
-            onClick={() => { changeSection(null); setOpen(false); }}
-            className={`mb-1 w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition ${selectedSection === null
-              ? "bg-indigo-600 text-white"
-              : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-              }`}
-          >
-            All Sections
-          </button>
-          <div className="grid grid-cols-4 gap-1">
-            {ROMAN.map((r, i) => (
-              <button
-                key={r}
-                onClick={() => { changeSection(i + 1); setOpen(false); }}
-                className={`rounded-lg py-1.5 text-center text-xs font-bold transition ${selectedSection === i + 1
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-400 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300"
-                  }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ─── App Shell ─────────────────────────────────────────────────────────────────
 const AppShell = ({ children, onOpenAdmin, metrics, pendingCount }) => {
@@ -106,8 +44,8 @@ const AppShell = ({ children, onOpenAdmin, metrics, pendingCount }) => {
                 to="/"
                 className={({ isActive }) =>
                   isActive
-                    ? "text-blue-600 dark:text-blue-400 font-semibold"
-                    : "hover:text-slate-800 dark:hover:text-slate-200 transition"
+                    ? "font-semibold text-blue-600 dark:text-blue-400"
+                    : "transition hover:text-slate-800 dark:hover:text-slate-200"
                 }
               >
                 Home
@@ -116,8 +54,8 @@ const AppShell = ({ children, onOpenAdmin, metrics, pendingCount }) => {
                 to="/dashboard"
                 className={({ isActive }) =>
                   isActive
-                    ? "text-blue-600 dark:text-blue-400 font-semibold"
-                    : "hover:text-slate-800 dark:hover:text-slate-200 transition"
+                    ? "font-semibold text-blue-600 dark:text-blue-400"
+                    : "transition hover:text-slate-800 dark:hover:text-slate-200"
                 }
               >
                 Dashboard
@@ -130,26 +68,25 @@ const AppShell = ({ children, onOpenAdmin, metrics, pendingCount }) => {
             </nav>
           </div>
 
-          {/* Right — Section Picker + Theme + Admin */}
+          {/* Right — Theme + Admin */}
           <div className="flex items-center gap-2">
-            <SectionPicker />
             <button
               onClick={toggleTheme}
               className="rounded-full border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              {theme === "dark" ? "☀ Light" : "☾ Dark"}
+              {theme === "dark" ? "Light" : "Dark"}
             </button>
             {isAdmin ? (
               <button
                 onClick={logout}
                 className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
               >
-                ✓ Admin Active
+                Admin Active
               </button>
             ) : (
               <button
                 onClick={onOpenAdmin}
-                className="rounded-full bg-gradient-to-r from-slate-800 to-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-slate-700 hover:to-slate-800 dark:from-slate-100 dark:to-slate-200 dark:text-slate-900"
+                className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 Admin Mode
               </button>
@@ -191,14 +128,12 @@ const App = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const { isAdmin } = useAuth();
 
-  // Notification permission
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, []);
 
-  // Metrics
   useEffect(() => {
     const load = async () => {
       try { const res = await api.get("/metrics"); setMetrics(res.data); } catch { }
@@ -213,11 +148,9 @@ const App = () => {
     }
   }, []);
 
-  // Reminder + pending requests polling
   useEffect(() => {
     let intervalId;
     const poll = async () => {
-      // Reminders
       if ("Notification" in window) {
         try {
           const res = await api.get("/reminders");
@@ -234,7 +167,6 @@ const App = () => {
           }
         } catch { }
       }
-      // Pending count badge for admin
       if (isAdmin) {
         try {
           const res = await api.get("/task-requests");

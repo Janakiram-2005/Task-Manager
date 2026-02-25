@@ -1,6 +1,5 @@
 import React from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useSection } from "../context/SectionContext.jsx";
 
 const PRIORITY_STYLES = {
   High: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
@@ -15,13 +14,9 @@ const STATUS_STYLES = {
 
 const TaskCard = ({ task, onComplete, onDelete }) => {
   const { isAdmin } = useAuth();
-  const { ROMAN } = useSection();
 
-  const deadlineDate = task.deadline_datetime
-    ? new Date(task.deadline_datetime)
-    : null;
-  const isOverdue =
-    deadlineDate && task.status !== "Completed" && deadlineDate < new Date();
+  const deadlineDate = task.deadline_datetime ? new Date(task.deadline_datetime) : null;
+  const isOverdue = deadlineDate && task.status !== "Completed" && deadlineDate < new Date();
 
   return (
     <div
@@ -30,19 +25,11 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
           : "border-slate-200 bg-white dark:border-slate-700/60 dark:bg-slate-900"
         }`}
     >
-      {/* Title row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {task.title}
-            </h3>
-            {task.section && (
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-                §{ROMAN[task.section - 1]}
-              </span>
-            )}
-          </div>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            {task.title}
+          </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             <span className="font-medium text-slate-600 dark:text-slate-300">{task.subject}</span>
             {deadlineDate && (
@@ -51,7 +38,7 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
                 <span className={isOverdue ? "font-semibold text-red-500" : ""}>
                   {deadlineDate.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
                 </span>
-                {isOverdue && " ⚠ Overdue"}
+                {isOverdue && " · Overdue"}
               </>
             )}
           </p>
@@ -61,19 +48,16 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
         </span>
       </div>
 
-      {/* Description */}
       {task.description && (
-        <p className="text-xs leading-relaxed text-slate-600 line-clamp-2 dark:text-slate-300">
+        <p className="line-clamp-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
           {task.description}
         </p>
       )}
 
-      {/* Footer */}
       <div className="flex items-center justify-between">
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[task.status] ?? STATUS_STYLES.Pending}`}>
           {task.status}
         </span>
-
         {isAdmin && (
           <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
             {task.status !== "Completed" && (
@@ -81,7 +65,7 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
                 onClick={() => onComplete(task)}
                 className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700"
               >
-                ✓ Done
+                Done
               </button>
             )}
             <button

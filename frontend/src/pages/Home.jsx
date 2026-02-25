@@ -1,25 +1,21 @@
 import React, { useEffect, useState } from "react";
+import { jsPDF } from "jspdf";
 import api from "../services/api";
 import CalendarView from "../components/CalendarView.jsx";
 import TaskCard from "../components/TaskCard.jsx";
 import SearchBar from "../components/SearchBar.jsx";
+import FeedbackForm from "../components/FeedbackForm.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useSection } from "../context/SectionContext.jsx";
 
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-  "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX"];
-
-const INPUT_CLS = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+const INPUT_CLS = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-1 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
 const EMPTY_REQ = {
   title: "", subject: "", description: "",
-  priority: "Medium", section: "",
-  deadline_datetime: "", submitter_name: "",
+  priority: "Medium", deadline_datetime: "", submitter_name: "",
 };
 
 const Home = () => {
   const { isAdmin } = useAuth();
-  const { selectedSection } = useSection();
 
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
@@ -38,24 +34,20 @@ const Home = () => {
       const res = await api.get("/tasks");
       setTasks(res.data);
       setFilteredTasks(res.data);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchAll(); }, []);
 
   useEffect(() => {
-    let base = tasks;
-    if (selectedSection) base = base.filter((t) => t.section === selectedSection);
-    if (!search) { setFilteredTasks(base); return; }
+    if (!search) { setFilteredTasks(tasks); return; }
     const q = search.toLowerCase();
-    setFilteredTasks(base.filter((t) =>
+    setFilteredTasks(tasks.filter((t) =>
       t.title.toLowerCase().includes(q) ||
       t.subject.toLowerCase().includes(q) ||
       (t.description || "").toLowerCase().includes(q)
     ));
-  }, [search, tasks, selectedSection]);
+  }, [search, tasks]);
 
   const handleEventDrop = async (id, newIso) => {
     if (!isAdmin) return;
@@ -80,10 +72,7 @@ const Home = () => {
   };
 
   const upcoming = [...tasks]
-    .filter((t) => {
-      const ok = new Date(t.deadline_datetime) >= new Date();
-      return selectedSection ? ok && t.section === selectedSection : ok;
-    })
+    .filter((t) => new Date(t.deadline_datetime) >= new Date())
     .sort((a, b) => new Date(a.deadline_datetime) - new Date(b.deadline_datetime))
     .slice(0, 5);
 
@@ -91,10 +80,26 @@ const Home = () => {
     ? filteredTasks.filter((t) => t.deadline_datetime?.startsWith(selectedDate))
     : [];
 
-  const handleReqChange = (e) => {
-    const { name, value } = e.target;
-    setReqForm((prev) => ({ ...prev, [name]: value }));
+  // ── Download PDF (all users) ─────────────────────────────────────
+  const downloadPdf = () => {
+    if (!tasks.length) return;
+    const doc = new jsPDF();
+    let y = 16;
+    doc.setFontSize(14); doc.text("Academic Task List", 14, y); y += 8;
+    doc.setFontSize(9);
+    tasks.forEach((t, i) => {
+      if (y > 280) { doc.addPage(); y = 16; }
+      doc.text(`${i + 1}. [${t.priority}] ${t.title} (${t.subject})`, 14, y); y += 5;
+      doc.text(`Due: ${new Date(t.deadline_datetime).toLocaleString()} · ${t.status}`, 14, y); y += 5;
+      if (t.description) { const lines = doc.splitTextToSize(t.description, 180); doc.text(lines, 14, y); y += lines.length * 4; }
+      y += 2;
+    });
+    doc.save("tasks.pdf");
+    try { api.post("/metrics/download"); } catch { }
   };
+
+  // ── Request form ─────────────────────────────────────────────────
+  const handleReqChange = (e) => setReqForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleReqSubmit = async (e) => {
     e.preventDefault();
@@ -106,7 +111,6 @@ const Home = () => {
     try {
       await api.post("/task-requests", {
         ...reqForm,
-        section: reqForm.section ? parseInt(reqForm.section) : undefined,
         deadline_datetime: new Date(reqForm.deadline_datetime).toISOString(),
       });
       setReqSuccess("Request submitted! The admin will review it shortly.");
@@ -114,30 +118,30 @@ const Home = () => {
       setTimeout(() => setReqSuccess(""), 6000);
     } catch (err) {
       setReqError(err.response?.data?.error || "Failed to submit request.");
-    } finally {
-      setReqLoading(false);
-    }
+    } finally { setReqLoading(false); }
   };
 
   return (
     <div className="space-y-6">
 
-      {/* Header row */}
+      {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-            Academic Task Calendar
-            {selectedSection && (
-              <span className="ml-2 rounded-full bg-indigo-100 px-2.5 py-0.5 text-sm font-bold text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-                Section {ROMAN[selectedSection - 1]}
-              </span>
-            )}
-          </h1>
+          <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Academic Task Calendar</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Public view — submit a request below if you need a task added.
+            Public view — browse tasks, download the list, or submit a request below.
           </p>
         </div>
-        <SearchBar value={search} onChange={setSearch} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={downloadPdf}
+            disabled={!tasks.length}
+            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+          >
+            Download PDF
+          </button>
+          <SearchBar value={search} onChange={setSearch} />
+        </div>
       </div>
 
       {/* Calendar + Sidebar */}
@@ -147,9 +151,7 @@ const Home = () => {
         </div>
         <div className="space-y-4">
           <div>
-            <h2 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Upcoming Deadlines
-            </h2>
+            <h2 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Upcoming Deadlines</h2>
             {upcoming.length === 0 ? (
               <p className="text-xs text-slate-400">No upcoming deadlines.</p>
             ) : (
@@ -182,15 +184,14 @@ const Home = () => {
 
       {loading && <p className="text-xs text-slate-400">Loading tasks…</p>}
 
-      {/* Request a Task — at the bottom */}
+      {/* Request a Task */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-4 border-b border-slate-100 pb-3 dark:border-slate-800">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Request a Task</h2>
           <p className="mt-0.5 text-xs text-slate-400">
-            Fill in the details below and the admin will review your request.
+            Fill in the details — the admin will review and add it to the calendar.
           </p>
         </div>
-
         <form onSubmit={handleReqSubmit} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -212,37 +213,24 @@ const Home = () => {
             <div>
               <label className="mb-1 block text-xs text-slate-500">Priority</label>
               <select name="priority" value={reqForm.priority} onChange={handleReqChange} className={INPUT_CLS}>
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-slate-500">Section (optional)</label>
-              <select name="section" value={reqForm.section} onChange={handleReqChange} className={INPUT_CLS}>
-                <option value="">All sections</option>
-                {ROMAN.map((r, i) => <option key={r} value={i + 1}>Section {r}</option>)}
+                <option>Low</option><option>Medium</option><option>High</option>
               </select>
             </div>
           </div>
-
           <div>
             <label className="mb-1 block text-xs text-slate-500">Description (optional)</label>
-            <textarea name="description" value={reqForm.description} onChange={handleReqChange} placeholder="Add any extra details here…" rows={3} className={`${INPUT_CLS} resize-none`} />
+            <textarea name="description" value={reqForm.description} onChange={handleReqChange} placeholder="Any extra details…" rows={3} className={`${INPUT_CLS} resize-none`} />
           </div>
-
           {reqError && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400">{reqError}</p>}
           {reqSuccess && <p className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">{reqSuccess}</p>}
-
-          <button
-            type="submit"
-            disabled={reqLoading}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
-          >
+          <button type="submit" disabled={reqLoading} className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60">
             {reqLoading ? "Submitting…" : "Submit Request"}
           </button>
         </form>
       </div>
+
+      {/* Feedback */}
+      <FeedbackForm />
 
     </div>
   );
