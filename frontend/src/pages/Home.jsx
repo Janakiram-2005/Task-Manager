@@ -5,6 +5,7 @@ import CalendarView from "../components/CalendarView.jsx";
 import TaskCard from "../components/TaskCard.jsx";
 import SearchBar from "../components/SearchBar.jsx";
 import FeedbackForm from "../components/FeedbackForm.jsx";
+import NotesPanel from "../components/NotesPanel.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const INPUT_CLS = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-1 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
@@ -235,6 +236,12 @@ const Home = () => {
             {reqLoading ? "Submitting…" : "Submit Request"}
           </button>
         </form>
+      </div>
+
+      {/* Notes */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">📌 Notes &amp; Announcements</h2>
+        <NotesPanel />
       </div>
 
       {/* Feedback */}

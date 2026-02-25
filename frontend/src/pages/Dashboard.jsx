@@ -324,7 +324,12 @@ const Dashboard = ({ onMetricsUpdate, onPendingCountChange }) => {
         </div>
 
         {/* Stats */}
-        <DashboardStats tasks={tasks} pendingRequests={pendingRequests.length} />
+        <DashboardStats
+          tasks={tasks}
+          pendingRequests={pendingRequests.length}
+          isAdmin={isAdmin}
+          onMetricsReset={onMetricsUpdate}
+        />
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800/50">
