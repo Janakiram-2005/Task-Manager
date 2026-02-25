@@ -22,5 +22,5 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-CMD ["gunicorn", "--bind=0.0.0.0:8080", "app:create_app()", "--factory", "--workers=2", "--threads=4", "--timeout=60"]
+CMD ["gunicorn", "--bind=0.0.0.0:8080", "app:app"]
 
