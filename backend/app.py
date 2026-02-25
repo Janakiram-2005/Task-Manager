@@ -46,7 +46,11 @@ def create_app() -> Flask:
     mongo_uri = os.environ.get("MONGO_URI")
     mongo_db_name = os.environ.get("MONGO_DB_NAME")
 
-    client = MongoClient(mongo_uri)
+    client = MongoClient(
+        mongo_uri,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+    )
     db = client[mongo_db_name]
 
     # Attach DB to app
