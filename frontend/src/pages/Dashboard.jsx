@@ -3,215 +3,177 @@ import { jsPDF } from "jspdf";
 import api from "../services/api";
 import DashboardStats from "../components/DashboardStats.jsx";
 import TaskCard from "../components/TaskCard.jsx";
+import RequestCard from "../components/RequestCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useSection } from "../context/SectionContext.jsx";
 
-const Dashboard = ({ onMetricsUpdate }) => {
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+  "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX"];
+
+const INPUT_CLS = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
+const Dashboard = ({ onMetricsUpdate, onPendingCountChange }) => {
   const { isAdmin } = useAuth();
+  const { selectedSection } = useSection();
+
   const [tasks, setTasks] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [activeTab, setActiveTab] = useState("tasks"); // "tasks" | "requests"
+
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    subject: "",
-    priority: "Medium",
-    start_datetime: "",
-    end_datetime: "",
-    deadline_datetime: "",
-    reminder_enabled: true
+    title: "", description: "", subject: "",
+    priority: "Medium", section: "",
+    start_datetime: "", end_datetime: "",
+    deadline_datetime: "", reminder_enabled: true,
   });
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
+  // ── Fetch tasks ──────────────────────────────────────────────────────────────
   const fetchTasks = async () => {
-    const res = await api.get("/tasks");
-    setTasks(res.data);
+    try {
+      const res = await api.get("/tasks");
+      setTasks(res.data);
+    } catch { }
+  };
+
+  // ── Fetch pending requests ────────────────────────────────────────────────────
+  const fetchRequests = async () => {
+    if (!isAdmin) return;
+    try {
+      const res = await api.get("/task-requests");
+      setPendingRequests(res.data || []);
+      onPendingCountChange?.((res.data || []).length);
+    } catch { }
   };
 
   useEffect(() => {
     fetchTasks();
   }, []);
 
+  useEffect(() => {
+    fetchRequests();
+    const id = setInterval(fetchRequests, 30000);
+    return () => clearInterval(id);
+  }, [isAdmin]);
+
+  // ── Derived: filtered tasks ───────────────────────────────────────────────────
+  const visibleTasks = selectedSection
+    ? tasks.filter((t) => t.section === selectedSection)
+    : tasks;
+
+  // ── Form handlers ─────────────────────────────────────────────────────────────
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
+    setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    if (!form.deadline_datetime) {
-      setError("Please choose a deadline date and time.");
-      return;
-    }
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const deadlineSelected = new Date(form.deadline_datetime);
-    if (deadlineSelected < todayStart) {
-      setError("Deadline cannot be earlier than today.");
-      return;
-    }
-
-    if (form.start_datetime) {
-      const startSelected = new Date(form.start_datetime);
-      if (startSelected < todayStart) {
-        setError("Start date cannot be earlier than today.");
-        return;
-      }
-      if (form.end_datetime) {
-        const endSelected = new Date(form.end_datetime);
-        if (endSelected < startSelected) {
-          setError("End date cannot be earlier than start date.");
-          return;
-        }
-      }
-    }
+    setError(""); setSuccess("");
+    if (!form.deadline_datetime) { setError("Please choose a deadline."); return; }
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    if (new Date(form.deadline_datetime) < todayStart) { setError("Deadline cannot be earlier than today."); return; }
     try {
-      const res = await api.post("/tasks", {
+      const payload = {
         ...form,
-        start_datetime: form.start_datetime
-          ? new Date(form.start_datetime).toISOString()
-          : undefined,
-        end_datetime: form.end_datetime
-          ? new Date(form.end_datetime).toISOString()
-          : undefined,
-        deadline_datetime: new Date(form.deadline_datetime).toISOString()
-      });
+        section: form.section ? parseInt(form.section) : undefined,
+        start_datetime: form.start_datetime ? new Date(form.start_datetime).toISOString() : undefined,
+        end_datetime: form.end_datetime ? new Date(form.end_datetime).toISOString() : undefined,
+        deadline_datetime: new Date(form.deadline_datetime).toISOString(),
+      };
+      const res = await api.post("/tasks", payload);
       setTasks((prev) => [...prev, res.data]);
       setForm({
-        title: "",
-        description: "",
-        subject: "",
-        priority: "Medium",
-        start_datetime: "",
-        end_datetime: "",
-        deadline_datetime: "",
-        reminder_enabled: true
+        title: "", description: "", subject: "", priority: "Medium", section: "",
+        start_datetime: "", end_datetime: "", deadline_datetime: "", reminder_enabled: true
       });
+      setSuccess("Task created successfully!");
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      let message = "Failed to create task.";
-      if (err.response) {
-        if (err.response.status === 401) {
-          message =
-            "Admin session is missing or expired. Open Admin Mode and re-enter the secret key.";
-        } else if (err.response.data?.errors) {
-          message = JSON.stringify(err.response.data.errors);
-        } else if (err.response.data?.error) {
-          message = err.response.data.error;
-        }
-      } else {
-        message = "Cannot reach server. Is the backend running?";
-      }
-      setError(message);
+      if (err.response?.status === 401) setError("Admin session expired. Re-enter the secret key.");
+      else setError(err.response?.data?.error || "Failed to create task.");
     }
   };
 
-  const recordDownload = async () => {
+  // ── Admin approve / reject ───────────────────────────────────────────────────
+  const handleApprove = async (req) => {
     try {
-      const res = await api.post("/metrics/download");
-      onMetricsUpdate?.(res.data);
-    } catch (err) {
-      console.error("Failed to record download", err);
-    }
+      const res = await api.post(`/task-requests/${req._id}/approve`);
+      setPendingRequests((prev) => prev.filter((r) => r._id !== req._id));
+      onPendingCountChange?.((prev) => Math.max(0, prev - 1));
+      if (res.data?.task) setTasks((prev) => [...prev, res.data.task]);
+    } catch { }
   };
 
+  const handleReject = async (req) => {
+    try {
+      await api.post(`/task-requests/${req._id}/reject`);
+      setPendingRequests((prev) => prev.filter((r) => r._id !== req._id));
+      onPendingCountChange?.((prev) => Math.max(0, prev - 1));
+    } catch { }
+  };
+
+  // ── Task actions ─────────────────────────────────────────────────────────────
   const handleComplete = async (task) => {
     try {
       const res = await api.put(`/tasks/complete/${task._id}`);
       setTasks((prev) => prev.map((t) => (t._id === task._id ? res.data : t)));
-    } catch (err) {
-      console.error("Failed to complete", err);
-    }
+    } catch { }
   };
-
   const handleDelete = async (task) => {
     try {
       await api.delete(`/tasks/${task._id}`);
       setTasks((prev) => prev.filter((t) => t._id !== task._id));
-    } catch (err) {
-      console.error("Failed to delete", err);
-    }
+    } catch { }
+  };
+
+  // ── Exports ──────────────────────────────────────────────────────────────────
+  const recordDownload = async () => {
+    try { const res = await api.post("/metrics/download"); onMetricsUpdate?.(res.data); } catch { }
   };
 
   const exportCsv = () => {
-    if (tasks.length === 0) return;
-    const headers = [
-      "Title",
-      "Description",
-      "Subject",
-      "Priority",
-      "Deadline",
-      "Status",
-      "ReminderEnabled"
-    ];
+    if (!tasks.length) return;
+    const headers = ["Title", "Subject", "Section", "Priority", "Deadline", "Status"];
     const rows = tasks.map((t) => [
-      t.title,
-      t.description || "",
-      t.subject,
-      t.priority,
-      t.deadline_datetime,
-      t.status,
-      t.reminder_enabled ? "Yes" : "No"
+      t.title, t.subject,
+      t.section ? ROMAN[t.section - 1] : "",
+      t.priority, t.deadline_datetime, t.status,
     ]);
-    const csv = [headers, ...rows]
-      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "tasks.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-    recordDownload();
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
+      download: "tasks.csv",
+    });
+    a.click(); recordDownload();
   };
 
   const exportPdf = () => {
-    if (tasks.length === 0) return;
+    if (!tasks.length) return;
     const doc = new jsPDF();
-    const marginLeft = 14;
     let y = 16;
-
-    doc.setFontSize(14);
-    doc.text("Academic Task List", marginLeft, y);
-    y += 6;
+    doc.setFontSize(14); doc.text("Academic Task List", 14, y); y += 8;
     doc.setFontSize(9);
-
-    tasks.forEach((t, index) => {
-      if (y > 280) {
-        doc.addPage();
-        y = 16;
-      }
-      const deadline = new Date(t.deadline_datetime).toLocaleString();
-      const line = `${index + 1}. [${t.priority}] ${t.title} (${t.subject})`;
-      doc.text(line, marginLeft, y);
-      y += 4;
-      doc.text(`Due: ${deadline} • Status: ${t.status}`, marginLeft, y);
-      y += 4;
-      if (t.description) {
-        const descLines = doc.splitTextToSize(
-          t.description,
-          180
-        );
-        doc.text(descLines, marginLeft, y);
-        y += descLines.length * 4;
-      }
+    tasks.forEach((t, i) => {
+      if (y > 280) { doc.addPage(); y = 16; }
+      const section = t.section ? ` [§${ROMAN[t.section - 1]}]` : "";
+      doc.text(`${i + 1}. [${t.priority}]${section} ${t.title} (${t.subject})`, 14, y); y += 5;
+      doc.text(`Due: ${new Date(t.deadline_datetime).toLocaleString()} • ${t.status}`, 14, y); y += 5;
+      if (t.description) { const lines = doc.splitTextToSize(t.description, 180); doc.text(lines, 14, y); y += lines.length * 4; }
       y += 2;
     });
-
-    doc.save("tasks.pdf");
-    recordDownload();
+    doc.save("tasks.pdf"); recordDownload();
   };
 
+  // ── Non-admin view ────────────────────────────────────────────────────────────
   if (!isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-        <h1 className="text-lg font-semibold">Admin dashboard</h1>
-        <p className="max-w-sm text-xs text-slate-600 dark:text-slate-300">
-          Dashboard is only visible for admins. Enable Admin Mode with the
-          secret key to create, modify, or delete tasks and view statistics.
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-2xl dark:bg-slate-800">🔒</div>
+        <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100">Admin Dashboard</h1>
+        <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
+          Enable Admin Mode with the secret key to manage tasks, review requests, and view statistics.
         </p>
       </div>
     );
@@ -219,143 +181,128 @@ const Dashboard = ({ onMetricsUpdate }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Dashboard</h1>
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Dashboard</h1>
+          {selectedSection && (
+            <p className="text-xs text-indigo-600 dark:text-indigo-400">
+              Showing Section {ROMAN[selectedSection - 1]} only
+            </p>
+          )}
+        </div>
         <div className="flex gap-2">
-          <button
-            onClick={exportCsv}
-            className="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900"
-          >
+          <button onClick={exportCsv} className="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200">
             Export CSV
           </button>
-          <button
-            onClick={exportPdf}
-            className="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900"
-          >
+          <button onClick={exportPdf} className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-blue-700 hover:to-indigo-700">
             Download PDF
           </button>
         </div>
       </div>
 
-      <DashboardStats tasks={tasks} />
+      {/* ── Stats ── */}
+      <DashboardStats tasks={tasks} pendingRequests={pendingRequests.length} />
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
-          <h2 className="mb-3 text-sm font-semibold">Create new task</h2>
-          {!isAdmin && (
-            <p className="mb-2 text-xs text-amber-600 dark:text-amber-300">
-              Enable Admin Mode to create or edit tasks.
-            </p>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <input
-              type="text"
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              placeholder="Title"
-              disabled={!isAdmin}
-              className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-            />
-            <input
-              type="text"
-              name="subject"
-              value={form.subject}
-              onChange={handleChange}
-              placeholder="Subject"
-              disabled={!isAdmin}
-              className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-            />
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              placeholder="Description"
-              disabled={!isAdmin}
-              className="h-20 w-full resize-none rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-            />
-            <div className="flex gap-3">
-              <select
-                name="priority"
-                value={form.priority}
-                onChange={handleChange}
-                disabled={!isAdmin}
-                className="w-32 rounded-md border border-slate-300 bg-slate-50 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
-              <div className="flex-1 space-y-2">
-                <input
-                  type="datetime-local"
-                  name="start_datetime"
-                  value={form.start_datetime}
-                  onChange={handleChange}
-                  disabled={!isAdmin}
-                  placeholder="Start date & time"
-                  className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-                />
-                <input
-                  type="datetime-local"
-                  name="end_datetime"
-                  value={form.end_datetime}
-                  onChange={handleChange}
-                  disabled={!isAdmin}
-                  placeholder="End date & time"
-                  className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-                />
-                <input
-                  type="datetime-local"
-                  name="deadline_datetime"
-                  value={form.deadline_datetime}
-                  onChange={handleChange}
-                  disabled={!isAdmin}
-                  placeholder="Deadline date & time"
-                  className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-                />
+      {/* ── Tabs ── */}
+      <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800/50">
+        {[["tasks", "📋 Tasks"], ["requests", `📨 Requests${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}`]].map(([tab, label]) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${activeTab === tab
+                ? "bg-white shadow text-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab Contents ── */}
+      {activeTab === "tasks" && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Create task form */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
+            <h2 className="mb-4 text-sm font-bold text-slate-700 dark:text-slate-200">✏️ Create New Task</h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input type="text" name="title" value={form.title} onChange={handleChange} placeholder="Task title *" className={INPUT_CLS} />
+              <input type="text" name="subject" value={form.subject} onChange={handleChange} placeholder="Subject *" className={INPUT_CLS} />
+              <textarea name="description" value={form.description} onChange={handleChange} placeholder="Description (optional)" rows={3} className={`${INPUT_CLS} resize-none`} />
+              <div className="grid grid-cols-2 gap-3">
+                <select name="priority" value={form.priority} onChange={handleChange} className={INPUT_CLS}>
+                  <option>Low</option><option>Medium</option><option>High</option>
+                </select>
+                <select name="section" value={form.section} onChange={handleChange} className={INPUT_CLS}>
+                  <option value="">All Sections</option>
+                  {ROMAN.map((r, i) => <option key={r} value={i + 1}>Section {r}</option>)}
+                </select>
               </div>
-            </div>
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                name="reminder_enabled"
-                checked={form.reminder_enabled}
-                onChange={handleChange}
-                disabled={!isAdmin}
-              />
-              Enable reminders
-            </label>
-            {error && <p className="text-xs text-red-500">{error}</p>}
-            <button
-              type="submit"
-              disabled={!isAdmin}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
-            >
-              Create task
-            </button>
-          </form>
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold">All tasks</h2>
-          <div className="space-y-2">
-            {tasks.length === 0 && (
-              <p className="text-xs text-slate-500">No tasks available yet.</p>
+              <input type="datetime-local" name="start_datetime" value={form.start_datetime} onChange={handleChange} className={INPUT_CLS} />
+              <input type="datetime-local" name="end_datetime" value={form.end_datetime} onChange={handleChange} className={INPUT_CLS} />
+              <input type="datetime-local" name="deadline_datetime" value={form.deadline_datetime} onChange={handleChange} className={INPUT_CLS} />
+              <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                <input type="checkbox" name="reminder_enabled" checked={form.reminder_enabled} onChange={handleChange} className="rounded" />
+                Enable deadline reminders
+              </label>
+              {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 dark:bg-red-950/40 dark:text-red-400">{error}</p>}
+              {success && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">{success}</p>}
+              <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-blue-700 hover:to-indigo-700">
+                Create Task
+              </button>
+            </form>
+          </div>
+
+          {/* Task list */}
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              All Tasks
+              {selectedSection ? ` — Section ${ROMAN[selectedSection - 1]}` : ""}
+              <span className="ml-2 text-xs font-normal text-slate-400">({visibleTasks.length})</span>
+            </h2>
+            {visibleTasks.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 py-8 text-center text-xs text-slate-400 dark:border-slate-700">
+                {selectedSection ? `No tasks for Section ${ROMAN[selectedSection - 1]}.` : "No tasks yet. Create one!"}
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[640px] overflow-y-auto pr-1">
+                {visibleTasks.map((t) => (
+                  <TaskCard key={t._id} task={t} onComplete={handleComplete} onDelete={handleDelete} />
+                ))}
+              </div>
             )}
-            {tasks.map((t) => (
-              <TaskCard
-                key={t._id}
-                task={t}
-                onComplete={handleComplete}
-                onDelete={handleDelete}
-              />
-            ))}
           </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === "requests" && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              Pending Task Requests
+              <span className="ml-2 text-xs font-normal text-slate-400">({pendingRequests.length})</span>
+            </h2>
+            <button onClick={fetchRequests} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">
+              ↻ Refresh
+            </button>
+          </div>
+          {pendingRequests.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 py-12 text-center dark:border-slate-700">
+              <p className="text-2xl">📭</p>
+              <p className="mt-2 text-xs text-slate-400">No pending requests. All caught up!</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {pendingRequests.map((req) => (
+                <RequestCard key={req._id} request={req} onApprove={handleApprove} onReject={handleReject} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
 export default Dashboard;
-

@@ -1,69 +1,92 @@
 import React from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useSection } from "../context/SectionContext.jsx";
 
-const priorityColor = (priority) => {
-  switch (priority) {
-    case "High":
-      return "border-priority-high text-priority-high";
-    case "Medium":
-      return "border-priority-medium text-priority-medium";
-    default:
-      return "border-priority-low text-priority-low";
-  }
+const PRIORITY_STYLES = {
+  High: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
+  Medium: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
+  Low: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+};
+
+const STATUS_STYLES = {
+  Completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  Pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
 };
 
 const TaskCard = ({ task, onComplete, onDelete }) => {
   const { isAdmin } = useAuth();
+  const { ROMAN } = useSection();
+
+  const deadlineDate = task.deadline_datetime
+    ? new Date(task.deadline_datetime)
+    : null;
+  const isOverdue =
+    deadlineDate && task.status !== "Completed" && deadlineDate < new Date();
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <div
+      className={`group flex flex-col gap-3 rounded-xl border p-4 shadow-sm transition-all hover:shadow-md ${isOverdue
+          ? "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/20"
+          : "border-slate-200 bg-white dark:border-slate-700/60 dark:bg-slate-900"
+        }`}
+    >
+      {/* Title row */}
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold">{task.title}</h3>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-            {task.subject} •{" "}
-            {new Date(task.deadline_datetime).toLocaleString(undefined, {
-              dateStyle: "medium",
-              timeStyle: "short"
-            })}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              {task.title}
+            </h3>
+            {task.section && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                §{ROMAN[task.section - 1]}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-medium text-slate-600 dark:text-slate-300">{task.subject}</span>
+            {deadlineDate && (
+              <>
+                {" · "}
+                <span className={isOverdue ? "font-semibold text-red-500" : ""}>
+                  {deadlineDate.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                </span>
+                {isOverdue && " ⚠ Overdue"}
+              </>
+            )}
           </p>
         </div>
-        <span
-          className={`rounded-full border px-2 py-0.5 text-xs font-medium ${priorityColor(
-            task.priority
-          )}`}
-        >
+        <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES.Medium}`}>
           {task.priority}
         </span>
       </div>
+
+      {/* Description */}
       {task.description && (
-        <p className="text-xs text-slate-700 dark:text-slate-200">
+        <p className="text-xs leading-relaxed text-slate-600 line-clamp-2 dark:text-slate-300">
           {task.description}
         </p>
       )}
-      <div className="mt-2 flex items-center justify-between text-xs">
-        <span
-          className={
-            task.status === "Completed"
-              ? "rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-              : "rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-          }
-        >
+
+      {/* Footer */}
+      <div className="flex items-center justify-between">
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[task.status] ?? STATUS_STYLES.Pending}`}>
           {task.status}
         </span>
+
         {isAdmin && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
             {task.status !== "Completed" && (
               <button
                 onClick={() => onComplete(task)}
-                className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700"
               >
-                Complete
+                ✓ Done
               </button>
             )}
             <button
               onClick={() => onDelete(task)}
-              className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
+              className="rounded-lg border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-700 dark:bg-slate-900 dark:text-red-400"
             >
               Delete
             </button>
@@ -75,4 +98,3 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
 };
 
 export default TaskCard;
-

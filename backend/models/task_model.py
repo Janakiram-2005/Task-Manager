@@ -168,6 +168,17 @@ def validate_task_payload(
         else:
             validated["status"] = status
 
+    section = data.get("section")
+    if section is not None:
+        try:
+            section_int = int(section)
+            if section_int < 1 or section_int > 19:
+                errors["section"] = "Section must be between 1 and 19."
+            else:
+                validated["section"] = section_int
+        except (TypeError, ValueError):
+            errors["section"] = "Section must be a number between 1 and 19."
+
     if errors:
         return None, errors
     return validated, None
