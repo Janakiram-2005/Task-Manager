@@ -90,11 +90,20 @@ const Dashboard = ({ onMetricsUpdate }) => {
         reminder_enabled: true
       });
     } catch (err) {
-      setError(
-        err.response?.data?.errors
-          ? JSON.stringify(err.response.data.errors)
-          : "Failed to create task (are you in Admin Mode?)"
-      );
+      let message = "Failed to create task.";
+      if (err.response) {
+        if (err.response.status === 401) {
+          message =
+            "Admin session is missing or expired. Open Admin Mode and re-enter the secret key.";
+        } else if (err.response.data?.errors) {
+          message = JSON.stringify(err.response.data.errors);
+        } else if (err.response.data?.error) {
+          message = err.response.data.error;
+        }
+      } else {
+        message = "Cannot reach server. Is the backend running?";
+      }
+      setError(message);
     }
   };
 

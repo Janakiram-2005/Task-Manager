@@ -31,7 +31,12 @@ def create_app() -> Flask:
     app.config["JWT_SECRET_KEY"] = config.JWT_SECRET_KEY
 
     # 🌍 CORS - Allow ALL origins (Temporary Development Setting)
-    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+    CORS(app, resources={r"/*": {"origins":[ 
+        "*",
+        "https://gen-lang-client-0508301847.web.app"
+        ]}},
+         supports_credentials=True
+        )
 
     # 🗄️ MongoDB Connection
     mongo_uri = os.environ.get("MONGO_URI")
