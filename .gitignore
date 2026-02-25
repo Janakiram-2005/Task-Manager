@@ -1,0 +1,28 @@
+# Python / backend
+backend/venv/
+backend/__pycache__/
+backend/**/*.py[cod]
+backend/*.log
+
+# Environment files (never commit real secrets)
+backend/.env
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.idea/
+.vscode/
+
+# Cursor / IDE project files
+.cursor/
+

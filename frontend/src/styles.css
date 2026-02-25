@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply antialiased;
+}
+
+.app-shell {
+  @apply min-h-screen bg-slate-50 text-slate-900 transition-colors duration-200;
+}
+
+.dark .app-shell {
+  @apply bg-slate-950 text-slate-50;
+}
+
+/* Calendar day hover and accents */
+.fc .fc-daygrid-day {
+  transition: background-color 0.15s ease;
+}
+
+.fc .fc-daygrid-day:hover {
+  background-color: rgba(59, 130, 246, 0.05); /* subtle blue hover */
+}
+
+.dark .fc .fc-daygrid-day:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+  background-color: rgba(34, 197, 94, 0.08); /* soft green for today */
+}
+
+.dark .fc .fc-daygrid-day.fc-day-today {
+  background-color: rgba(34, 197, 94, 0.22);
+}
+
