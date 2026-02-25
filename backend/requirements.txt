@@ -4,4 +4,5 @@ python-dotenv>=1.0.0
 pymongo[srv]>=4.6.0
 APScheduler>=3.10.4
 PyJWT>=2.9.0
+gunicorn
 
