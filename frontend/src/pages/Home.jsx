@@ -12,7 +12,7 @@ const INPUT_CLS = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 
 
 const EMPTY_REQ = {
   title: "", subject: "", description: "",
-  priority: "Medium", deadline_datetime: "", submitter_name: "",
+  priority: "Medium", start_datetime: "", deadline_datetime: "",
 };
 
 const Home = () => {
@@ -120,6 +120,7 @@ const Home = () => {
     try {
       await api.post("/task-requests", {
         ...reqForm,
+        start_datetime: reqForm.start_datetime ? new Date(reqForm.start_datetime).toISOString() : undefined,
         deadline_datetime: new Date(reqForm.deadline_datetime).toISOString(),
       });
       setReqSuccess("Request submitted! The admin will review it shortly.");
@@ -204,10 +205,6 @@ const Home = () => {
         <form onSubmit={handleReqSubmit} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-slate-500">Your name</label>
-              <input name="submitter_name" value={reqForm.submitter_name} onChange={handleReqChange} placeholder="e.g. Ravi Kumar" className={INPUT_CLS} />
-            </div>
-            <div>
               <label className="mb-1 block text-xs text-slate-500">Task title *</label>
               <input name="title" value={reqForm.title} onChange={handleReqChange} placeholder="e.g. Math Assignment" className={INPUT_CLS} />
             </div>
@@ -216,7 +213,11 @@ const Home = () => {
               <input name="subject" value={reqForm.subject} onChange={handleReqChange} placeholder="e.g. Mathematics" className={INPUT_CLS} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-500">Deadline *</label>
+              <label className="mb-1 block text-xs text-slate-500">Start time</label>
+              <input type="datetime-local" name="start_datetime" value={reqForm.start_datetime} onChange={handleReqChange} className={INPUT_CLS} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-slate-500">End / Deadline *</label>
               <input type="datetime-local" name="deadline_datetime" value={reqForm.deadline_datetime} onChange={handleReqChange} className={INPUT_CLS} />
             </div>
             <div>

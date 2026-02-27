@@ -38,7 +38,7 @@ def _get_requests_col():
 def _serialize_request(doc: Dict[str, Any]) -> Dict[str, Any]:
     doc = dict(doc)
     doc["_id"] = str(doc["_id"])
-    for field in ("deadline_datetime", "created_at"):
+    for field in ("deadline_datetime", "start_datetime", "created_at"):
         if field in doc and isinstance(doc[field], datetime):
             doc[field] = (
                 doc[field].astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -53,7 +53,7 @@ def submit_request():
     """
     Any visitor can submit a task request.
     Required body fields: title, subject, priority, deadline_datetime
-    Optional: description, section (1-19), submitter_name
+    Optional: description, start_datetime
     """
     payload = request.get_json(silent=True) or {}
 
@@ -62,19 +62,25 @@ def submit_request():
     if errors:
         return jsonify({"errors": errors}), 400
 
-    submitter_name = str(payload.get("submitter_name", "Anonymous")).strip()[:80]
+    # Parse optional start_datetime
+    start_dt = None
+    raw_start = payload.get("start_datetime")
+    if raw_start:
+        try:
+            start_dt = parse_iso_datetime(raw_start)
+        except Exception:
+            return jsonify({"error": "Invalid start_datetime format"}), 400
 
     now = datetime.now(timezone.utc)
     doc: Dict[str, Any] = {
-        "title": validated["title"],
-        "description": validated.get("description", ""),
-        "subject": validated["subject"],
-        "priority": validated["priority"],
-        "section": validated.get("section"),
+        "title":             validated["title"],
+        "description":       validated.get("description", ""),
+        "subject":           validated["subject"],
+        "priority":          validated["priority"],
+        "start_datetime":    start_dt,
         "deadline_datetime": validated["deadline_datetime"],
-        "submitter_name": submitter_name,
-        "status": "Pending",          # request status: Pending / Approved / Rejected
-        "created_at": now,
+        "status":            "Pending",
+        "created_at":        now,
     }
 
     col = _get_requests_col()
@@ -116,19 +122,17 @@ def approve_request(request_id: str):
     # Build the task document from the approved request
     now = datetime.now(timezone.utc)
     task_doc: Dict[str, Any] = {
-        "title": req_doc["title"],
-        "description": req_doc.get("description", ""),
-        "subject": req_doc["subject"],
-        "priority": req_doc["priority"],
-        "section": req_doc.get("section"),
-        "deadline_datetime": req_doc["deadline_datetime"],
-        "start_datetime": None,
-        "end_datetime": None,
-        "reminder_enabled": True,
-        "status": "Pending",
-        "created_at": now,
-        "updated_at": now,
-        "approved_from_request": request_id,
+        "title":                   req_doc["title"],
+        "description":             req_doc.get("description", ""),
+        "subject":                 req_doc["subject"],
+        "priority":                req_doc["priority"],
+        "start_datetime":          req_doc.get("start_datetime"),
+        "deadline_datetime":       req_doc["deadline_datetime"],
+        "reminder_enabled":        True,
+        "status":                  "Pending",
+        "created_at":              now,
+        "updated_at":              now,
+        "approved_from_request":   request_id,
     }
     tasks_col = get_tasks_collection(current_app.db)
     task_result = tasks_col.insert_one(task_doc)

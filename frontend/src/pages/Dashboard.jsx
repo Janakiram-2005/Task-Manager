@@ -222,7 +222,18 @@ const Dashboard = ({ onMetricsUpdate, onPendingCountChange }) => {
       const res = await api.post(`/task-requests/${req._id}/approve`);
       setPendingRequests((prev) => prev.filter((r) => r._id !== req._id));
       onPendingCountChange?.((p) => Math.max(0, p - 1));
-      if (res.data?.task) setTasks((prev) => [...prev, res.data.task]);
+      const task = res.data?.task;
+      if (task) {
+        setTasks((prev) => [...prev, task]);
+        // Push a browser notification to all users currently on the page
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(`📅 New task added: ${task.title}`, {
+            body: `${task.subject} · Due: ${task.deadline_datetime
+              ? new Date(task.deadline_datetime).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+              : "TBD"}`,
+          });
+        }
+      }
     } catch { }
   };
 
