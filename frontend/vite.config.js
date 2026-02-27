@@ -7,11 +7,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "https://task-manager-backend-961886344080.us-central1.run.app",
+        // Local development → Flask on port 5000
+        target: "http://localhost:5000",
         changeOrigin: true,
-        secure: true,
+        secure: false,
+        // For production proxy to Cloud Run instead:
+        // target: "https://task-manager-backend-961886344080.us-central1.run.app",
       },
     },
   },
 });
-
