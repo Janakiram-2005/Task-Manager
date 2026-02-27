@@ -79,9 +79,14 @@ const Home = () => {
 
   const tasksForSelectedDate = selectedDate
     ? filteredTasks.filter((t) => {
-      const start = t.start_datetime ? t.start_datetime.slice(0, 10) : null;
-      const deadline = t.deadline_datetime ? t.deadline_datetime.slice(0, 10) : null;
-      // Show if selectedDate hits the deadline, the start, or falls within start–deadline range
+      const getLocalYMD = (iso) => {
+        if (!iso) return null;
+        const d = new Date(iso);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const start = getLocalYMD(t.start_datetime);
+      const deadline = getLocalYMD(t.deadline_datetime);
+
       if (deadline === selectedDate) return true;
       if (start === selectedDate) return true;
       if (start && deadline && selectedDate >= start && selectedDate <= deadline) return true;

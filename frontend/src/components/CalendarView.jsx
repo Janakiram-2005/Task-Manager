@@ -15,15 +15,18 @@ const CalendarView = ({ tasks, onDateClick, onEventDrop }) => {
   const { isAdmin } = useAuth();
   const calendarRef = useRef(null);
 
-  const events = tasks.map((t) => ({
-    id: t._id,
-    title: t.title,
-    start: t.start_datetime || t.deadline_datetime,
-    end: t.deadline_datetime || undefined,
-    allDay: false,
-    extendedProps: { ...t },
-    color: PRIORITY_COLOR[t.priority] || PRIORITY_COLOR.Medium,
-  }));
+  const events = tasks.map((t) => {
+    const hasValidStart = t.start_datetime && t.start_datetime !== t.deadline_datetime;
+    return {
+      id: t._id,
+      title: t.title,
+      start: t.start_datetime || t.deadline_datetime,
+      end: hasValidStart ? t.deadline_datetime : undefined,
+      allDay: false,
+      extendedProps: { ...t },
+      color: PRIORITY_COLOR[t.priority] || PRIORITY_COLOR.Medium,
+    };
+  });
 
   useEffect(() => {
     const calApi = calendarRef.current?.getApi?.();
