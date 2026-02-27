@@ -10,6 +10,7 @@ from routes import api_bp
 from routes.auth import auth_bp
 from routes.tasks import tasks_bp
 from routes.task_requests import task_requests_bp
+from routes.notes import notes_bp
 from scheduler import attach_reminder_scheduler
 
 
@@ -69,6 +70,7 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp, url_prefix="/api")
     app.register_blueprint(tasks_bp, url_prefix="/api")
     app.register_blueprint(task_requests_bp, url_prefix="/api")
+    app.register_blueprint(notes_bp, url_prefix="/api")
 
     # ⏰ Attach Reminder Scheduler
     attach_reminder_scheduler(app)
@@ -84,3 +86,6 @@ def create_app() -> Flask:
         ), 200
 
     return app
+'''
+flask --app "app:create_app()" run --port 5000 --debug
+'''
